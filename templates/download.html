@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Download Video Chunks</title>
+</head>
+<body>
+    <h1>Download Video Chunks</h1>
+    <ul>
+        {% for file in files %}
+            <li><a href="/output/{{ file }}" download>{{ file }}</a></li>
+        {% endfor %}
+    </ul>
+    <a href="/">Back to upload</a>
+</body>
+</html>
