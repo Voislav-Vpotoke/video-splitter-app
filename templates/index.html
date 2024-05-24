@@ -1,23 +1,51 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="utf-8">
     <title>Video Splitter</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
-    <h1>Upload Video, Audio, and Texts</h1>
-    <form action="/" method="post" enctype="multipart/form-data">
-        <label for="video">Video file:</label>
-        <input type="file" id="video" name="video" accept="video/*" required><br><br>
-
-        <label for="audio">Audio file:</label>
-        <input type="file" id="audio" name="audio" accept="audio/*" required><br><br>
-
-        <label for="texts">Texts file:</label>
-        <input type="file" id="texts" name="texts" accept=".txt" required><br><br>
-
-        <input type="submit" value="Upload">
-    </form>
+    <div class="container">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Загрузите файлы для обработки</h3>
+            </div>
+            <div class="card-body">
+                <form id="upload-form" action="/" method="post" enctype="multipart/form-data" onsubmit="return validateFiles()">
+                    <div class="form-group">
+                        <label for="video">Видео файл:</label>
+                        <input type="file" class="form-control" id="video" name="video" required onchange="updateFileLabel('video'); previewVideoFile()">
+                        <small id="video-label" class="form-text text-muted">Файл не выбран</small>
+                        <video id="video-preview" width="100%" controls style="display:none; margin-top: 10px;"></video>
+                    </div>
+                    <div class="form-group">
+                        <label for="audio">Аудио файл:</label>
+                        <input type="file" class="form-control" id="audio" name="audio" required onchange="updateFileLabel('audio'); previewAudioFile()">
+                        <small id="audio-label" class="form-text text-muted">Файл не выбран</small>
+                        <audio id="audio-preview" controls style="display:none; margin-top: 10px;"></audio>
+                    </div>
+                    <div class="form-group">
+                        <label for="texts">Текстовый файл:</label>
+                        <input type="file" class="form-control" id="texts" name="texts" required onchange="updateFileLabel('texts'); previewTextFile()">
+                        <small id="texts-label" class="form-text text-muted">Файл не выбран</small>
+                    </div>
+                    <div id="text-preview" class="mt-3" style="display: none;">
+                        <h5>Предварительный просмотр и редактирование текста</h5>
+                        <textarea id="text-content" class="form-control" rows="10"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block mt-3">Загрузить</button>
+                </form>
+                <div id="loading" class="loading-message" style="display: none;">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="sr-only">Идёт обработка...</span>
+                    </div>
+                    <p>Идёт обработка, пожалуйста, подождите...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='scripts.js') }}"></script>
 </body>
 </html>

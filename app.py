@@ -1,109 +1,130 @@
-from flask import Flask, request, render_template, redirect, url_for
-import moviepy.editor as mp
+from flask import Flask, request, render_template, redirect, url_for, send_from_directory
 import os
+from werkzeug.utils import secure_filename
+from video_processing import load_texts, split_video
 from loguru import logger
 
 app = Flask(__name__)
 
-logger.add("file_{time}.log", rotation="10 MB")
+# Настройка логирования
+logger.add("logs/general.log", rotation="10 MB", level="INFO")
+logger.add("logs/critical.log", rotation="10 MB", level="ERROR", filter=lambda record: record["level"].name == "ERROR")
 
+# Конфигурация приложения
+app.config['MAX_CONTENT_LENGTH'] = 1024 * 1024 * 1024  # 1 GB
+ALLOWED_EXTENSIONS = {'mp4', 'mkv', 'mp3', 'wav', 'txt'}
+ALLOWED_VIDEO_MIME_TYPES = ['video/mp4', 'video/x-matroska']
+ALLOWED_AUDIO_MIME_TYPES = ['audio/mpeg', 'audio/wav']
+ALLOWED_TEXT_MIME_TYPES = ['text/plain']
 
-def load_texts(file_path):
-    logger.info(f"Loading texts from {file_path}")
-    with open(file_path, 'r', encoding='utf-8') as file:
-        texts = file.readlines()
-    return [text.strip() for text in texts]
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-def repeat_audio(audio, duration):
-    """Повтор аудиофайла до заданной продолжительности."""
-    repeated_clips = []
-    current_duration = 0
-
-    while current_duration < duration:
-        clip_duration = min(audio.duration, duration - current_duration)
-        repeated_clips.append(audio.subclip(0, clip_duration))
-        current_duration += clip_duration
-
-    return mp.concatenate_audioclips(repeated_clips)
-
-
-def create_text_clip(text, duration, video_size):
-    """Создание текстового клипа с разбиением на строки."""
-    lines = text.split('\n')
-    formatted_text = '\n'.join(lines)
-    txt_clip = mp.TextClip(formatted_text, fontsize=44, color='white', size=video_size, method='caption',
-                           align='center')
-    txt_clip = txt_clip.set_pos('center').set_duration(duration)
-    return txt_clip
-
-
-def split_video(input_path, output_dir, chunk_duration, audio_track_path, text_list):
-    logger.info(f"Splitting video: {input_path} into chunks of {chunk_duration} seconds")
-    video = mp.VideoFileClip(input_path)
-    video_duration = video.duration
-    audio = mp.AudioFileClip(audio_track_path)
-
-    if audio.duration < chunk_duration:
-        audio = repeat_audio(audio, chunk_duration)
-
-    for i in range(0, int(video_duration), chunk_duration):
-        start = i
-        end = min(i + chunk_duration, video_duration)
-        video_chunk = video.subclip(start, end)
-        video_chunk = video_chunk.set_audio(audio.subclip(0, end - start))
-
-        if i // chunk_duration < len(text_list):
-            txt_clip = create_text_clip(text_list[i // chunk_duration], end - start, video.size)
-            video_chunk = mp.CompositeVideoClip([video_chunk, txt_clip])
-
-        output_path = os.path.join(output_dir, f"chunk_{i // chunk_duration}.mp4")
-        logger.info(f"Saving video chunk to {output_path}")
-        video_chunk.write_videofile(output_path, codec="libx264")
-
+def allowed_mime_type(file, allowed_mime_types):
+    return file.content_type in allowed_mime_types
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
         try:
-            video_file = request.files['video']
-            audio_file = request.files['audio']
-            text_file = request.files['texts']
+            video_file = request.files.get('video')
+            audio_file = request.files.get('audio')
+            text_file = request.files.get('texts')
+            modified_text = request.form.get('modified_text')
 
-            video_path = os.path.join('uploads', video_file.filename)
-            audio_path = os.path.join('uploads', audio_file.filename)
-            text_path = os.path.join('uploads', text_file.filename)
+            if not video_file or not audio_file or not text_file:
+                return "Необходимо предоставить все файлы (видео, аудио, текст).", 400
 
-            logger.info(f"Received video file: {video_path}")
-            logger.info(f"Received audio file: {audio_path}")
-            logger.info(f"Received text file: {text_path}")
+            # Проверка расширений файлов
+            if not (allowed_file(video_file.filename) and allowed_file(audio_file.filename) and allowed_file(text_file.filename)):
+                return "Неверный тип файла.", 400
 
-            video_file.save(video_path)
-            audio_file.save(audio_path)
-            text_file.save(text_path)
+            # Проверка MIME-типов
+            if not allowed_mime_type(video_file, ALLOWED_VIDEO_MIME_TYPES):
+                return "Неверный тип видео файла.", 400
+            if not allowed_mime_type(audio_file, ALLOWED_AUDIO_MIME_TYPES):
+                return "Неверный тип аудио файла.", 400
+            if not allowed_mime_type(text_file, ALLOWED_TEXT_MIME_TYPES):
+                return "Неверный тип текстового файла.", 400
 
-            output_dir = os.path.join('output')
+            uploads_dir = os.path.join(BASE_DIR, 'uploads')
+            output_dir = os.path.join(BASE_DIR, 'output')
+
+            video_filename = secure_filename(video_file.filename)
+            audio_filename = secure_filename(audio_file.filename)
+            text_filename = secure_filename(text_file.filename)
+
+            video_path = os.path.join(uploads_dir, video_filename)
+            audio_path = os.path.join(uploads_dir, audio_filename)
+            text_path = os.path.join(uploads_dir, text_filename)
+
+            logger.info(f"Получен видео файл: {video_path}")
+            logger.info(f"Получен аудио файл: {audio_path}")
+            logger.info(f"Получен текстовый файл: {text_path}")
+
+            try:
+                with open(video_path, 'wb') as vf:
+                    vf.write(video_file.read())
+                with open(audio_path, 'wb') as af:
+                    af.write(audio_file.read())
+                with open(text_path, 'wb') as tf:
+                    tf.write(text_file.read())
+            except IOError as e:
+                logger.error(f"Ошибка при сохранении файлов: {e}")
+                return "Ошибка при сохранении файлов. Пожалуйста, попробуйте снова.", 500
+
+            # Проверка на существование файлов
+            if not (os.path.exists(video_path) and os.path.exists(audio_path) and os.path.exists(text_path)):
+                return "Ошибка при сохранении файлов.", 500
+
             os.makedirs(output_dir, exist_ok=True)
 
-            text_list = load_texts(text_path)
+            if modified_text:
+                text_list = modified_text.split('\n')
+            else:
+                try:
+                    text_list = load_texts(text_path)
+                except Exception as e:
+                    logger.error(f"Ошибка при загрузке текстового файла: {e}")
+                    return "Ошибка при загрузке текстового файла. Пожалуйста, убедитесь, что файл правильно отформатирован.", 500
 
-            split_video(video_path, output_dir, 15, audio_path, text_list)
+            try:
+                split_video(video_path, output_dir, 15, audio_path, text_list)
+            except ValueError as e:
+                logger.error(f"Ошибка при проверке текстового файла: {e}")
+                return f"Ошибка при проверке текстового файла: {e}", 400
+            except Exception as e:
+                logger.error(f"Ошибка при обработке видео: {e}")
+                return "Ошибка при обработке видео. Пожалуйста, убедитесь, что файлы правильно отформатированы.", 500
+
         except Exception as e:
-            logger.error(f"Error processing files: {e}")
-            return str(e)
+            logger.error(f"Неожиданная ошибка: {e}")
+            return f"Произошла непредвиденная ошибка: {e}. Пожалуйста, попробуйте позже.", 500
 
         return redirect(url_for('download'))
     return render_template('index.html')
 
-
 @app.route('/download')
 def download():
-    files = os.listdir('output')
+    output_dir = os.path.join(BASE_DIR, 'output')
+    files = os.listdir(output_dir)
     return render_template('download.html', files=files)
 
+@app.route('/download/<filename>')
+def download_file(filename):
+    output_dir = os.path.join(BASE_DIR, 'output')
+    return send_from_directory(output_dir, filename)
 
 if __name__ == '__main__':
-    os.makedirs('uploads', exist_ok=True)
-    os.makedirs('output', exist_ok=True)
-    logger.info("Starting the Flask application")
+    uploads_dir = os.path.join(BASE_DIR, 'uploads')
+    output_dir = os.path.join(BASE_DIR, 'output')
+    logs_dir = os.path.join(BASE_DIR, 'logs')
+
+    os.makedirs(uploads_dir, exist_ok=True)
+    os.makedirs(output_dir, exist_ok=True)
+    os.makedirs(logs_dir, exist_ok=True)
+
+    logger.info("Запуск Flask приложения")
     app.run(debug=True)

@@ -1,0 +1,39 @@
+body {
+    background-color: #f8f9fa;
+}
+
+.container {
+    margin-top: 50px;
+}
+
+.card {
+    margin: 0 auto; /* Центрирование карточки */
+    max-width: 600px; /* Максимальная ширина карточки */
+}
+
+.card-header {
+    background-color: #007bff;
+    color: white;
+}
+
+.card-body {
+    background-color: white;
+}
+
+.btn-primary {
+    background-color: #007bff;
+    border-color: #007bff;
+}
+
+.spinner-border {
+    display: none;
+    width: 3rem;
+    height: 3rem;
+    border-width: .3em;
+}
+
+.loading-message {
+    display: none;
+    text-align: center;
+    margin-top: 20px;
+}
