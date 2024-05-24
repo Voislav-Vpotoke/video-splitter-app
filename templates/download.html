@@ -5,22 +5,29 @@
     <title>Download Video Chunks</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+    <script src="{{ url_for('static', filename='scripts.js') }}"></script>
 </head>
 <body>
     <div class="container">
         <div class="card">
             <div class="card-header">
-                <h3 class="card-title">Скачайте или проиграйте фрагменты видео</h3>
+                <h3 class="card-title">Готовые фрагменты видео</h3>
             </div>
             <div class="card-body">
                 <ul class="list-group">
                     {% for file in files %}
-                    <li class="list-group-item">
-                        <a href="{{ url_for('download_file', filename=file) }}">{{ file }}</a>
-                        <video width="100%" controls style="margin-top: 10px;">
-                            <source src="{{ url_for('download_file', filename=file) }}" type="video/mp4">
-                            Ваш браузер не поддерживает воспроизведение видео.
-                        </video>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <video width="320" controls style="margin-top: 10px;">
+                                <source src="{{ url_for('download_file', filename=file) }}" type="video/mp4">
+                                Ваш браузер не поддерживает воспроизведение видео.
+                            </video>
+                        </div>
+                        <div>
+                            <a href="{{ url_for('download_file', filename=file) }}" class="btn btn-primary btn-download">Скачать</a>
+                            <button class="btn btn-delete btn-sm" onclick="deleteFile('{{ file }}')">Удалить</button>
+                        </div>
                     </li>
                     {% endfor %}
                 </ul>

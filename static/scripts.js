@@ -107,3 +107,18 @@ function previewAudioFile() {
         preview.src = '';
     }
 }
+function deleteFile(filename) {
+    if (confirm('Вы уверены, что хотите удалить этот файл?')) {
+        $.ajax({
+            url: '/delete/' + filename,
+            type: 'DELETE',
+            success: function(result) {
+                alert('Файл успешно удален');
+                location.reload();
+            },
+            error: function(err) {
+                alert('Ошибка при удалении файла');
+            }
+        });
+    }
+}

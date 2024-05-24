@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template, redirect, url_for, send_from_directory
+from flask import Flask, request, render_template, redirect, url_for, send_file, after_this_request, abort, jsonify
 import os
 from werkzeug.utils import secure_filename
 from video_processing import load_texts, split_video
@@ -19,11 +19,14 @@ ALLOWED_TEXT_MIME_TYPES = ['text/plain']
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+
 def allowed_mime_type(file, allowed_mime_types):
     return file.content_type in allowed_mime_types
+
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -38,7 +41,8 @@ def index():
                 return "Необходимо предоставить все файлы (видео, аудио, текст).", 400
 
             # Проверка расширений файлов
-            if not (allowed_file(video_file.filename) and allowed_file(audio_file.filename) and allowed_file(text_file.filename)):
+            if not (allowed_file(video_file.filename) and allowed_file(audio_file.filename) and allowed_file(
+                    text_file.filename)):
                 return "Неверный тип файла.", 400
 
             # Проверка MIME-типов
@@ -99,6 +103,15 @@ def index():
                 logger.error(f"Ошибка при обработке видео: {e}")
                 return "Ошибка при обработке видео. Пожалуйста, убедитесь, что файлы правильно отформатированы.", 500
 
+            # Удаление загруженных файлов после обработки
+            try:
+                os.remove(video_path)
+                os.remove(audio_path)
+                os.remove(text_path)
+                logger.info(f"Удалены файлы: {video_path}, {audio_path}, {text_path}")
+            except Exception as e:
+                logger.error(f"Ошибка при удалении файлов: {e}")
+
         except Exception as e:
             logger.error(f"Неожиданная ошибка: {e}")
             return f"Произошла непредвиденная ошибка: {e}. Пожалуйста, попробуйте позже.", 500
@@ -106,16 +119,43 @@ def index():
         return redirect(url_for('download'))
     return render_template('index.html')
 
+
 @app.route('/download')
 def download():
     output_dir = os.path.join(BASE_DIR, 'output')
     files = os.listdir(output_dir)
     return render_template('download.html', files=files)
 
+
 @app.route('/download/<filename>')
 def download_file(filename):
     output_dir = os.path.join(BASE_DIR, 'output')
-    return send_from_directory(output_dir, filename)
+    file_path = os.path.join(output_dir, filename)
+
+    if not os.path.exists(file_path):
+        logger.error(f"Файл не найден: {file_path}")
+        abort(404)
+
+    return send_file(file_path, as_attachment=True)
+
+
+@app.route('/delete/<filename>', methods=['DELETE'])
+def delete_file(filename):
+    output_dir = os.path.join(BASE_DIR, 'output')
+    file_path = os.path.join(output_dir, filename)
+
+    if not os.path.exists(file_path):
+        logger.error(f"Файл не найден: {file_path}")
+        return jsonify({"error": "Файл не найден"}), 404
+
+    try:
+        os.remove(file_path)
+        logger.info(f"Удален файл: {file_path}")
+        return jsonify({"success": "Файл удален"}), 200
+    except Exception as e:
+        logger.error(f"Ошибка при удалении файла: {e}")
+        return jsonify({"error": "Ошибка при удалении файла"}), 500
+
 
 if __name__ == '__main__':
     uploads_dir = os.path.join(BASE_DIR, 'uploads')
