@@ -6,151 +6,170 @@
 ## Возможности
 
 - Загрузка видео, аудиофайлов и текстовых файлов через веб-интерфейс.
+- Предварительный просмотр и редактирование текстового файла перед загрузкой.
+- Предварительный просмотр видео и аудио файлов перед загрузкой.
 - Разделение видео на куски по 15 секунд.
 - Наложение аудиофайла на каждый кусок видео.
 - Добавление текста из предоставленного текстового файла к каждому куску видео.
-- Скачивание обработанных кусков видео.
+- Скачивание и проигрывание обработанных кусков видео.
 
 ## Установка
 
-1. Клонируйте репозиторий:
-    ```sh
-    git clone https://github.com/yourusername/video-splitter-app.git
-    cd video-splitter-app
-    ```
+Клонируйте репозиторий:
 
-2. Создайте виртуальное окружение:
-    ```sh
-    python -m venv venv
-    ```
+```bash
+git clone https://github.com/yourusername/video-splitter-app.git
+cd video-splitter-app
 
-3. Активируйте виртуальное окружение:
+Создайте виртуальное окружение:
 
-    - В Windows:
-        ```sh
-        venv\Scripts\activate
-        ```
-    - В macOS и Linux:
-        ```sh
-        source venv/bin/activate
-        ```
+bash
 
-4. Установите зависимости:
-    ```sh
-    pip install -r requirements.txt
-    ```
+python -m venv venv
 
-## Деплой
+Активируйте виртуальное окружение:
+
+    В Windows:
+
+bash
+
+venv\Scripts\activate
+
+    В macOS и Linux:
+
+bash
+
+source venv/bin/activate
+
+Установите зависимости:
+
+bash
+
+pip install -r requirements.txt
+
+Деплой
 
 Для деплоя приложения на сервере, например, с использованием Gunicorn и Nginx, выполните следующие шаги:
+Настройка Gunicorn
 
-### Настройка Gunicorn
+Установите Gunicorn:
 
-1. Установите Gunicorn:
-    ```sh
-    pip install gunicorn
-    ```
+bash
 
-2. Запустите приложение с помощью Gunicorn:
-    ```sh
-    gunicorn -w 4 app:app
-    ```
-    Здесь `-w 4` указывает на использование 4 рабочих процессов.
+pip install gunicorn
 
-### Настройка Nginx
+Запустите приложение с помощью Gunicorn:
 
-1. Установите Nginx (если он еще не установлен):
-    ```sh
-    sudo apt update
-    sudo apt install nginx
-    ```
+bash
 
-2. Настройте конфигурацию Nginx для вашего приложения. Откройте конфигурационный файл Nginx:
-    ```sh
-    sudo nano /etc/nginx/sites-available/video-splitter-app
-    ```
+gunicorn -w 4 app:app
 
-3. Добавьте следующую конфигурацию:
-    ```nginx
-    server {
-        listen 80;
-        server_name your_domain_or_IP;
+Здесь -w 4 указывает на использование 4 рабочих процессов.
+Настройка Nginx
 
-        location / {
-            proxy_pass http://127.0.0.1:8000;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-        }
+Установите Nginx (если он еще не установлен):
 
-        location /static/ {
-            alias /path_to_your_project/static/;
-        }
+bash
+
+sudo apt update
+sudo apt install nginx
+
+Настройте конфигурацию Nginx для вашего приложения. Откройте конфигурационный файл Nginx:
+
+bash
+
+sudo nano /etc/nginx/sites-available/video-splitter-app
+
+Добавьте следующую конфигурацию:
+
+nginx
+
+server {
+    listen 80;
+    server_name your_domain_or_IP;
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
-    ```
 
-4. Активируйте конфигурацию, создав символическую ссылку:
-    ```sh
-    sudo ln -s /etc/nginx/sites-available/video-splitter-app /etc/nginx/sites-enabled
-    ```
+    location /static/ {
+        alias /path_to_your_project/static/;
+    }
+}
 
-5. Перезапустите Nginx, чтобы применить изменения:
-    ```sh
-    sudo systemctl restart nginx
-    ```
+Активируйте конфигурацию, создав символическую ссылку:
 
-### Настройка systemd для Gunicorn
+bash
 
-1. Создайте файл службы systemd:
-    ```sh
-    sudo nano /etc/systemd/system/video-splitter-app.service
-    ```
+sudo ln -s /etc/nginx/sites-available/video-splitter-app /etc/nginx/sites-enabled
 
-2. Добавьте следующую конфигурацию:
-    ```ini
-    [Unit]
-    Description=Gunicorn instance to serve video-splitter-app
-    After=network.target
+Перезапустите Nginx, чтобы применить изменения:
 
-    [Service]
-    User=your_user
-    Group=www-data
-    WorkingDirectory=/path_to_your_project
-    Environment="PATH=/path_to_your_project/venv/bin"
-    ExecStart=/path_to_your_project/venv/bin/gunicorn -w 4 -b 127.0.0.1:8000 app:app
+bash
 
-    [Install]
-    WantedBy=multi-user.target
-    ```
+sudo systemctl restart nginx
 
-3. Перезапустите systemd, чтобы учесть новый файл службы:
-    ```sh
-    sudo systemctl daemon-reload
-    ```
+Настройка systemd для Gunicorn
 
-4. Запустите службу и настройте ее на автозапуск:
-    ```sh
-    sudo systemctl start video-splitter-app
-    sudo systemctl enable video-splitter-app
-    ```
+Создайте файл службы systemd:
+
+bash
+
+sudo nano /etc/systemd/system/video-splitter-app.service
+
+Добавьте следующую конфигурацию:
+
+ini
+
+[Unit]
+Description=Gunicorn instance to serve video-splitter-app
+After=network.target
+
+[Service]
+User=your_user
+Group=www-data
+WorkingDirectory=/path_to_your_project
+Environment="PATH=/path_to_your_project/venv/bin"
+ExecStart=/path_to_your_project/venv/bin/gunicorn -w 4 -b 127.0.0.1:8000 app:app
+
+[Install]
+WantedBy=multi-user.target
+
+Перезапустите systemd, чтобы учесть новый файл службы:
+
+bash
+
+sudo systemctl daemon-reload
+
+Запустите службу и настройте ее на автозапуск:
+
+bash
+
+sudo systemctl start video-splitter-app
+sudo systemctl enable video-splitter-app
+
 Теперь ваше приложение должно быть доступно по вашему доменному имени или IP-адресу.
+Структура файлов
 
-## Структура файлов
+    app.py: Основной файл приложения Flask.
+    templates/index.html: HTML-шаблон для страницы загрузки.
+    templates/download.html: HTML-шаблон для страницы загрузки обработанных видео.
+    static/scripts.js: JavaScript файл для обработки логики на клиентской стороне.
+    uploads/: Директория для хранения загруженных файлов.
+    output/: Директория для хранения обработанных кусков видео.
+    logs/: Директория для хранения логов.
 
-- `app.py`: Основной файл приложения Flask.
-- `templates/index.html`: HTML-шаблон для страницы загрузки.
-- `templates/download.html`: HTML-шаблон для страницы загрузки обработанных видео.
-- `uploads/`: Директория для хранения загруженных файлов.
-- `output/`: Директория для хранения обработанных кусков видео.
+Зависимости
 
-## Зависимости
+    Flask
+    moviepy
+    loguru
 
-- Flask
-- moviepy
-- loguru
-
-## Добавление текстов
+Добавление текстов
 
 Текстовый файл должен содержать текст для каждого куска, разделенный по строкам. Каждая строка соответствует 15-секундному куску видео. Например:
 
@@ -158,11 +177,9 @@
 Текст для второго куска
 Текст для третьего куска
 
-## Логирование
+Логирование
 
-Логи генерируются с использованием библиотеки `loguru` и сохраняются в файлы `file_{time}.log`. Логи включают информацию о загрузке файлов, этапах обработки и любых возникающих ошибках.
+Логи генерируются с использованием библиотеки loguru и сохраняются в файлы general.log и critical.log. Логи включают информацию о загрузке файлов, этапах обработки и любых возникающих ошибках.
+Лицензия
 
-## Лицензия
-
-Этот проект лицензирован под MIT License. См. файл `LICENSE` для получения дополнительной информации.
-
+Этот проект лицензирован под MIT License. См. файл LICENSE для получения дополнительной информации.
