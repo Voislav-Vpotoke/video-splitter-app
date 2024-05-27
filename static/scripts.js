@@ -107,18 +107,22 @@ function previewAudioFile() {
         preview.src = '';
     }
 }
-function deleteFile(filename) {
-    if (confirm('Вы уверены, что хотите удалить этот файл?')) {
-        $.ajax({
-            url: '/delete/' + filename,
-            type: 'DELETE',
-            success: function(result) {
-                alert('Файл успешно удален');
-                location.reload();
-            },
-            error: function(err) {
-                alert('Ошибка при удалении файла');
-            }
-        });
-    }
+
+function deleteFile(fileName) {
+    fetch(`/delete/${fileName}`, {
+        method: 'DELETE',
+    })
+    .then(response => {
+        if (response.ok) {
+            location.reload();
+        } else {
+            response.json().then(data => {
+                alert(data.error);
+            });
+        }
+    })
+    .catch(error => {
+        console.error('Ошибка:', error);
+        alert('Ошибка при удалении файла');
+    });
 }

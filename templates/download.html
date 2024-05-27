@@ -19,7 +19,7 @@
                     {% for file in files %}
                     <li class="list-group-item d-flex justify-content-between align-items-center">
                         <div>
-                            <video width="320" controls style="margin-top: 10px;">
+                            <video width="240" controls style="margin-top: 10px;">
                                 <source src="{{ url_for('download_file', filename=file) }}" type="video/mp4">
                                 Ваш браузер не поддерживает воспроизведение видео.
                             </video>

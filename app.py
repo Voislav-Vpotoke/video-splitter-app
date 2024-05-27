@@ -1,7 +1,7 @@
-from flask import Flask, request, render_template, redirect, url_for, send_file, after_this_request, abort, jsonify
+from flask import Flask, request, render_template, redirect, url_for, send_file, abort, jsonify
 import os
 from werkzeug.utils import secure_filename
-from video_processing import load_texts, split_video
+from video_processing import load_text_blocks, split_video
 from loguru import logger
 
 app = Flask(__name__)
@@ -19,14 +19,11 @@ ALLOWED_TEXT_MIME_TYPES = ['text/plain']
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
-
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-
 def allowed_mime_type(file, allowed_mime_types):
     return file.content_type in allowed_mime_types
-
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -35,7 +32,6 @@ def index():
             video_file = request.files.get('video')
             audio_file = request.files.get('audio')
             text_file = request.files.get('texts')
-            modified_text = request.form.get('modified_text')
 
             if not video_file or not audio_file or not text_file:
                 return "Необходимо предоставить все файлы (видео, аудио, текст).", 400
@@ -85,17 +81,14 @@ def index():
 
             os.makedirs(output_dir, exist_ok=True)
 
-            if modified_text:
-                text_list = modified_text.split('\n')
-            else:
-                try:
-                    text_list = load_texts(text_path)
-                except Exception as e:
-                    logger.error(f"Ошибка при загрузке текстового файла: {e}")
-                    return "Ошибка при загрузке текстового файла. Пожалуйста, убедитесь, что файл правильно отформатирован.", 500
+            try:
+                text_blocks = load_text_blocks(text_path)
+            except Exception as e:
+                logger.error(f"Ошибка при загрузке текстового файла: {e}")
+                return "Ошибка при загрузке текстового файла. Пожалуйста, убедитесь, что файл правильно отформатирован.", 500
 
             try:
-                split_video(video_path, output_dir, 15, audio_path, text_list)
+                split_video(video_path, output_dir, 15, audio_path, text_blocks)
             except ValueError as e:
                 logger.error(f"Ошибка при проверке текстового файла: {e}")
                 return f"Ошибка при проверке текстового файла: {e}", 400
@@ -119,13 +112,11 @@ def index():
         return redirect(url_for('download'))
     return render_template('index.html')
 
-
 @app.route('/download')
 def download():
     output_dir = os.path.join(BASE_DIR, 'output')
     files = os.listdir(output_dir)
     return render_template('download.html', files=files)
-
 
 @app.route('/download/<filename>')
 def download_file(filename):
@@ -137,7 +128,6 @@ def download_file(filename):
         abort(404)
 
     return send_file(file_path, as_attachment=True)
-
 
 @app.route('/delete/<filename>', methods=['DELETE'])
 def delete_file(filename):
@@ -155,7 +145,6 @@ def delete_file(filename):
     except Exception as e:
         logger.error(f"Ошибка при удалении файла: {e}")
         return jsonify({"error": "Ошибка при удалении файла"}), 500
-
 
 if __name__ == '__main__':
     uploads_dir = os.path.join(BASE_DIR, 'uploads')
