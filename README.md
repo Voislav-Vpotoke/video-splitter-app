@@ -18,7 +18,7 @@
 Клонируйте репозиторий:
 
 ```bash
-git clone https://github.com/Voislav_Vpotoke/video-splitter-app.git
+git clone https://github.com/Voislav-Vpotoke/video-splitter-app.git
 cd video-splitter-app
 
 Создайте виртуальное окружение:
